@@ -10,12 +10,12 @@
         <script>
             function create() {
                 const name = prompt("Nume:", "");
-                if (name != null && name != "") {
+                if (name != null && name != undefined && name != '') {
                     window.location.replace('/api/create/' + name);
                 }
             }
         </script>
-        <title>Document</title>
+        <title>Notite</title>
     </head>
     <body>
         <div class="container">
@@ -37,14 +37,14 @@
                             <tr>
                                 <td scope="row"><a href="/notes/<%= note.name %> "><%= note.name %></a></td>
                                 <td><%= new Date(note.date).toUTCString() %></td>
-                                <td><a href="api/deletenote/<%=note.name%> ">Sterge</a></td>
+                                <td><a href="/api/deletenote/<%=note.name%> ">Sterge</a></td>
                             </tr>
                             <% }); %> 
                         </tbody>
                     </table>
                     <button type="button" class="btn btn-primary" onclick="create()" style="margin-right: 10px;">Creeaza</button>
                     <button type="button" class="btn btn-primary" onclick="window.location.href = '/api/logout'">Delogare</button>
-                    <br>
+                    <br><br>
                     <% if(messages.error) {%> 
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
                           <button type="button" class="close" data-dismiss="alert" aria-label="Close">

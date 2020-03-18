@@ -15,9 +15,9 @@
                 <div class="col">
                     <h2>Notite</h2>
                     <label for=""></label>
-                    <form method="POST" action="api/notes" id='txtform'>
+                    <form method="POST" action="/notes/<%= messages.name %> " id='txtform'>
                         <div class="form-group">
-                            <textarea class="form-control" name="txt" id="txtarea" rows="10" style="overflow-y:scroll; resize: none;"><%= messages.text %></textarea>
+                            <textarea class="form-control" name="text" id="" rows="10" style="overflow-y:scroll; resize: none;"><%= messages.text %></textarea>
                         </div>
                         <button type="submit"" class="btn btn-primary">Salvare</button>
                     </form>

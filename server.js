@@ -104,6 +104,7 @@ app.get('/', (req, res) => {
 	try {
 		res.render('index');
 	} catch (error) {
+		log(error);
 		res.sendStatus(500);
 	}
 });
@@ -114,7 +115,6 @@ app.get('/register', (req, res) => {
 		res.render('register');
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
 });
@@ -142,7 +142,7 @@ app.post('/api/register', (req, res) => {
 				if (err) throw e;
 				querry = `CREATE TABLE ${req.body.username} (name VARCHAR(255), date BIGINT, text TEXT)`;
 				con.query(querry, (error, r) => {
-					if (error) return flashError(error);
+					if (error) throw err;
 					log('created table ' + req.body.username);
 					log('registered user ' + req.body.username);
 					res.redirect('/');
@@ -151,38 +151,37 @@ app.post('/api/register', (req, res) => {
 		});
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
 });
 
 app.get('/notes', (req, res) => {
-    logRequest(req);
-    if (!req.user) return res.redirect('/');
+	logRequest(req);
+	if (!req.user) return res.redirect('/');
 	try {
 		const querry = `SELECT * from ${req.user.username}`;
 		con.query(querry, (err, result) => {
-            if (err) throw err;
-            req.flash('notes', JSON.stringify(result));
-            res.render('noteslist');
+			if (err) throw err;
+			req.flash('notes', JSON.stringify(result));
+			res.render('noteslist');
 		});
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
 });
 
 app.get('/api/create/:name', (req, res) => {
-    logRequest(req);
+	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const username = req.user.username;
 		const name = req.params.name;
+		log(`user ${username} created note ${name}`);
 		let querry = `SELECT * from ${username} WHERE name = '${name}'`;
 		con.query(querry, (err, result) => {
 			if (err) throw err;
-			if (result.length > 0) return flashError(req, res, 'Nume deja folosit');
+			if (result.length > 0) return flashError(req, res, 'Nume deja folosit', '/notes');
 			querry = `INSERT INTO ${username} VALUES ('${name}', ${Date.now()}, ' ')`;
 			con.query(querry, (e, r) => {
 				if (e) throw e;
@@ -191,37 +190,72 @@ app.get('/api/create/:name', (req, res) => {
 		});
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
 });
 
-app.get('/api/note', (req, res) => {
+app.get('/notes/:name', (req, res) => {
 	logRequest(req);
 	if (!req.user) return res.redirect('/');
-	const file = 'users/' + req.user.username;
-	if (fs.existsSync(file)) {
-		req.flash('text', fs.readFileSync(file).toString('utf-8'));
-	} else {
-		fs.writeFileSync(file, '');
-		req.flash('text', '');
+	try {
+		const name = req.params.name;
+		let querry = `SELECT * from ${req.user.username} WHERE name = '${name}'`;
+		con.query(querry, (err, result) => {
+			if (err) throw err;
+			if (result.length > 0) {
+				req.flash('name', result[0].name);
+				req.flash('text', result[0].text);
+				res.render('note');
+			} else {
+				res.sendStatus(404);
+			}
+		});
+	} catch (error) {
+		log(error);
+		res.sendStatus(500);
 	}
-	res.redirect('/notes');
 });
 
-app.post('/api/note', (req, res) => {
+app.post('/notes/:name', (req, res) => {
 	logRequest(req);
 	if (!req.user) return res.redirect('/');
-	const file = 'users/' + req.user.username;
-	const text = req.body.txt;
 	try {
-		fs.writeFileSync(file, text);
-		req.flash('success', 'Salvat cu succes');
+		const username = req.user.username;
+		const name = req.params.name;
+		log(`user ${username} edited note ${name}`);
+		let querry = `SELECT * from ${username} WHERE name = '${name}'`;
+		con.query(querry, (err, result) => {
+			if (err) throw err;
+			if (result.length == 0) return res.sendStatus(404);
+			querry = `UPDATE ${username} SET text = '${req.body.text}', date = ${Date.now()} WHERE name = '${name}'`;
+			con.query(querry, (e, r) => {
+				if (e) throw e;
+				req.flash('success', 'Salvat cu succes');
+				res.redirect('/notes/' + name);
+			});
+		});
 	} catch (error) {
-		req.flash('error', error);
+		log(error);
+		res.sendStatus(500);
 	}
-	req.flash('text', text);
-	res.redirect('/notes');
+});
+
+app.get('/api/deletenote/:name', (req, res) => {
+	logRequest(req);
+	if (!req.user) return res.redirect('/');
+	try {
+		const username = req.user.username;
+		const name = req.params.name;
+		log(`user ${username} deleted note ${name}`);
+		let querry = `DELETE from ${username} WHERE name = '${name}'`;
+		con.query(querry, (err, result) => {
+			if (err) throw err;
+			res.redirect('/notes');
+		});
+	} catch (error) {
+		log(error);
+		res.sendStatus(500);
+	}
 });
 
 app.get('/:file', (req, res) => {
@@ -235,22 +269,22 @@ app.get('/:file', (req, res) => {
 		}
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
 });
 
 app.get('/api/logout', (req, res) => {
-    logRequest(req);
+	logRequest(req);
+	if (!req.user) return res.redirect('/');
 	try {
-        req.logout()
-        res.redirect('/')
+		log(`user ${req.user.username} logged out`);
+		req.logout();
+		res.redirect('/');
 	} catch (error) {
 		log(error);
-		res.send(error);
 		res.sendStatus(500);
 	}
-})
+});
 
 const port = process.env.PORT || 80;
 app.listen(port, () => log('listening on port ' + port));
