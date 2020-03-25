@@ -1,11 +1,16 @@
 const express = require('express');
+const https = require('https');
 const bcrypt = require('bcrypt');
+const request = require('request');
 const fs = require('fs');
-var mysql = require('mysql');
+const mysql = require('mysql');
 const Ls = require('passport-local').Strategy;
 const passport = require('passport');
 const flash = require('express-flash');
 const session = require('express-session');
+const moment = require('moment')
+
+require('dotenv').config();
 
 const app = express();
 app.set('view engine', 'ejs');
@@ -22,10 +27,10 @@ app.use(
 );
 
 var con = mysql.createConnection({
-	host: '35.246.147.57',
-	user: 'root',
-	password: 'Jupiter.2004',
-	database: 'notes'
+	host: process.env.DB_HOST,
+	user: process.env.DB_USER,
+	password: process.env.DB_PASSWORD,
+	database: process.env.DB_DBNAME
 });
 
 con.connect(function(err) {
@@ -58,6 +63,11 @@ passport.deserializeUser(async (id, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.use((req, res, next) => {
+	logRequest(req);
+	next();
+});
+
 function authuser(username, password, done) {
 	log(`login: ${username}, ${password}`);
 	const querry = `SELECT * FROM users WHERE username = '${username}'`;
@@ -83,12 +93,11 @@ function logRequest(req) {
 	const logobj = {
 		url: req.originalUrl,
 		user: req.user,
-		method: req.route.stack[0].method,
+		//method: JSON.stringify(req.methods),
 		time: time.toUTCString(),
 		body: req.body,
 		params: req.params,
-		ip: req.ip,
-		route: req.route
+		ip: getClientIp(req)
 	};
 	fs.appendFileSync('requestslog.txt', JSON.stringify(logobj) + '\n');
 }
@@ -99,20 +108,40 @@ function flashError(req, res, err, dest) {
 	res.redirect(dest);
 }
 
+var getClientIp = function(req) {
+	var ipAddress = req.ip;
+	if (!ipAddress) {
+		return '';
+	}
+	if (ipAddress.substr(0, 7) == '::ffff:') {
+		ipAddress = ipAddress.substr(7);
+	}
+	return ipAddress;
+};
+
+// ip_whitelist = [];
+
+// app.post('/api/verify', (req, res) => {
+// 	try {
+// 		if (!req.body.token) return res.sendStatus(400);
+// 		const verurl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env
+// 			.RECAPTCHA_SECRET}&response${req.body.token}`;
+// 		request(verurl, (err, res, body) => {
+// 			if (err) throw err;
+// 			body = JSON.parse(body);
+// 			if (body.success && body.score > 0.7) {
+// 				ip_whitelist.push(getClientIp(req));
+// 			} else console.log('found bot, score = ' + body.score);
+// 		});
+// 	} catch (error) {
+// 		log(error);
+// 		res.sendStatus(500);
+// 	}
+// });
+
 app.get('/', (req, res) => {
-	logRequest(req);
 	try {
 		res.render('index');
-	} catch (error) {
-		log(error);
-		res.sendStatus(500);
-	}
-});
-
-app.get('/register', (req, res) => {
-	logRequest(req);
-	try {
-		res.render('register');
 	} catch (error) {
 		log(error);
 		res.sendStatus(500);
@@ -128,8 +157,16 @@ app.post(
 	})
 );
 
+app.get('/register', (req, res) => {
+	try {
+		res.render('register');
+	} catch (error) {
+		log(error);
+		res.sendStatus(500);
+	}
+});
+
 app.post('/api/register', (req, res) => {
-	logRequest(req);
 	try {
 		console.log('register request ' + JSON.stringify(req.body));
 		let querry = `SELECT * FROM users WHERE username = '${req.body.username}'`;
@@ -140,7 +177,7 @@ app.post('/api/register', (req, res) => {
 			querry = `INSERT INTO users (username, password) VALUES ('${req.body.username}', '${hashpass}')`;
 			con.query(querry, (err, result) => {
 				if (err) throw e;
-				querry = `CREATE TABLE ${req.body.username} (name VARCHAR(255), date BIGINT, text TEXT)`;
+				querry = `CREATE TABLE ${req.body.username} (name VARCHAR(255), date VARCHAR(255), text TEXT)`;
 				con.query(querry, (error, r) => {
 					if (error) throw err;
 					log('created table ' + req.body.username);
@@ -156,7 +193,6 @@ app.post('/api/register', (req, res) => {
 });
 
 app.get('/notes', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const querry = `SELECT * from ${req.user.username}`;
@@ -172,7 +208,6 @@ app.get('/notes', (req, res) => {
 });
 
 app.get('/api/create/:name', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const username = req.user.username;
@@ -182,7 +217,8 @@ app.get('/api/create/:name', (req, res) => {
 		con.query(querry, (err, result) => {
 			if (err) throw err;
 			if (result.length > 0) return flashError(req, res, 'Nume deja folosit', '/notes');
-			querry = `INSERT INTO ${username} VALUES ('${name}', ${Date.now()}, ' ')`;
+			moment.locale();
+			querry = `INSERT INTO ${username} VALUES ('${name}', '${moment().format('lll')}', ' ')`;
 			con.query(querry, (e, r) => {
 				if (e) throw e;
 				res.redirect('/notes');
@@ -195,7 +231,6 @@ app.get('/api/create/:name', (req, res) => {
 });
 
 app.get('/notes/:name', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const name = req.params.name;
@@ -217,7 +252,6 @@ app.get('/notes/:name', (req, res) => {
 });
 
 app.post('/notes/:name', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const username = req.user.username;
@@ -227,7 +261,7 @@ app.post('/notes/:name', (req, res) => {
 		con.query(querry, (err, result) => {
 			if (err) throw err;
 			if (result.length == 0) return res.sendStatus(404);
-			querry = `UPDATE ${username} SET text = '${req.body.text}', date = ${Date.now()} WHERE name = '${name}'`;
+			querry = `UPDATE ${username} SET text = '${req.body.text}', date = '${moment().format('lll')}' WHERE name = '${name}'`;
 			con.query(querry, (e, r) => {
 				if (e) throw e;
 				req.flash('success', 'Salvat cu succes');
@@ -241,7 +275,6 @@ app.post('/notes/:name', (req, res) => {
 });
 
 app.get('/api/deletenote/:name', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		const username = req.user.username;
@@ -258,23 +291,7 @@ app.get('/api/deletenote/:name', (req, res) => {
 	}
 });
 
-app.get('/:file', (req, res) => {
-	logRequest(req);
-	try {
-		const file = req.params.file;
-		if (fs.existsSync(file)) {
-			res.sendFile(file);
-		} else {
-			res.sendStatus(404);
-		}
-	} catch (error) {
-		log(error);
-		res.sendStatus(500);
-	}
-});
-
 app.get('/api/logout', (req, res) => {
-	logRequest(req);
 	if (!req.user) return res.redirect('/');
 	try {
 		log(`user ${req.user.username} logged out`);
@@ -286,5 +303,31 @@ app.get('/api/logout', (req, res) => {
 	}
 });
 
+app.get('/:file', (req, res) => {
+	try {
+		const file = __dirname + '/public/' + req.params.file;
+		if (fs.existsSync(file)) {
+			res.sendFile(file);
+		} else {
+			res.sendStatus(404);
+		}
+	} catch (error) {
+		log(error);
+		res.sendStatus(500);
+	}
+});
+
 const port = process.env.PORT || 80;
-app.listen(port, () => log('listening on port ' + port));
+const portHttps = process.env.PORTHTTPS || 443;
+
+app.listen(port, () => log('listening http on port ' + port));
+https
+	.createServer(
+		{
+			key: fs.readFileSync('ssl/key.pem'),
+			cert: fs.readFileSync('ssl/cert.pem'),
+			passphrase: fs.readFileSync('ssl/passphrase').toString()
+		},
+		app
+	)
+	.listen(portHttps, () => log('listening https on port ' + portHttps));

@@ -23,7 +23,7 @@
                 <div class="col">
                     <h2>Notite</h2>
                     <p>Aici sunt notitele dumneavoastra</p>
-                    <table class="table">
+                    <table class="table table-hover">
                         <thead>
                             <tr>
                                 <th>Nume</th>
@@ -36,7 +36,7 @@
                             <% if(notes != undefined) notes.forEach(note => { %>
                             <tr>
                                 <td scope="row"><a href="/notes/<%= note.name %> "><%= note.name %></a></td>
-                                <td><%= new Date(note.date).toUTCString() %></td>
+                                <td><%= note.date %></td>
                                 <td><a href="/api/deletenote/<%=note.name%> ">Sterge</a></td>
                             </tr>
                             <% }); %> 

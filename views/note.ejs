@@ -7,19 +7,20 @@
         <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
-        <title>Notite</title>
+        <title><%= messages.name %></title>
     </head>
     <body>
         <div class="container" style="margin: 10px;">
             <div class="row">
                 <div class="col">
-                    <h2>Notite</h2>
+                    <h2><%= messages.name %></h2>
                     <label for=""></label>
                     <form method="POST" action="/notes/<%= messages.name %> " id='txtform'>
                         <div class="form-group">
                             <textarea class="form-control" name="text" id="" rows="10" style="overflow-y:scroll; resize: none;"><%= messages.text %></textarea>
                         </div>
-                        <button type="submit"" class="btn btn-primary">Salvare</button>
+                        <button type="submit" class="btn btn-primary" style="margin-right: 10px;">Salvare</button>
+                        <button type="button" class="btn btn-primary" onclick="window.location.href='/notes'">Inapoi</button>
                     </form>
                     <br>
                     <% if(messages.success) {%> 
