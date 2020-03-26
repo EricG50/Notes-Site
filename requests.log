@@ -1,0 +1,10 @@
+26/Mar/2020:09:45:24 +0000 ::ffff:180.106.101.148 GET /otsmobile/app/mgs/mgw.htm?operationType=com.cars.otsmobile.queryLeftTicket&requestData=%5B%7B%22train_date%22%3A%2220200331%22%2C%22purpose_codes%22%3A%2200%22%2C%22from_station%22%3A%22SHH%22%2C%22to_station%22%3A%22CNW%22%2C%22station_train_code%22%3A%22%22%2C%22start_time_begin%22%3A%220000%22%2C%22start_time_end%22%3A%222400%22%2C%22train_headers%22%3A%22QB%23%22%2C%22train_flag%22%3A%22%22%2C%22seat_type%22%3A%220%22%2C%22seatBack_Type%22%3A%22%22%2C%22ticket_num%22%3A%22%22%2C%22dfpStr%22%3A%22%22%2C%22baseDTO%22%3A%7B%22check_code%22%3A%22491040afb1cdda47a2158f8689de93ee%22%2C%22device_no%22%3A%22460062344310576%7C860878030813347%7C4XgMSmKgpt%22%2C%22mobile_no%22%3A%22%22%2C%22os_type%22%3A%22a%22%2C%22time_str%22%3A%2220200326174524%22%2C%22user_name%22%3A%22%22%2C%22version_no%22%3A%224.3.11%22%7D%7D%5D&ts=1585215924032&sign= 404 {}
+26/Mar/2020:09:46:07 +0000 ::ffff:105.186.232.211 GET / 200 {}
+26/Mar/2020:09:51:19 +0000 ::ffff:193.57.40.38 GET /solr/admin/info/system?wt=json 404 {}
+26/Mar/2020:10:04:02 +0000 ::ffff:173.243.72.19 GET / 200 {}
+26/Mar/2020:10:14:55 +0000 ::ffff:78.96.36.96 GET / 200 {}
+26/Mar/2020:10:26:57 +0000 ::ffff:193.57.40.38 GET /index.php?s=/Index/\think\app/invokefunction&function=call_user_func_array&vars[0]=md5&vars[1][]=HelloThinkPHP 404 {}
+26/Mar/2020:10:34:07 +0000 ::ffff:138.94.84.180 GET / 200 {}
+26/Mar/2020:10:34:19 +0000 ::ffff:192.168.0.1 GET / 304 {}
+26/Mar/2020:10:34:37 +0000 ::ffff:71.114.67.62 GET / 200 {}
+26/Mar/2020:10:34:38 +0000 ::ffff:71.114.67.62 GET /favicon.ico 200 {}

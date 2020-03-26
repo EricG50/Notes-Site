@@ -8,12 +8,21 @@ const Ls = require('passport-local').Strategy;
 const passport = require('passport');
 const flash = require('express-flash');
 const session = require('express-session');
-const moment = require('moment')
+const moment = require('moment');
+const joi = require('joi');
+const morgan = require('morgan');
 
 require('dotenv').config();
 
 const app = express();
 app.set('view engine', 'ejs');
+
+const format = ':date[clf] :remote-addr :method :url :status :body';
+const accessLogStream = fs.createWriteStream('requests.log', { flags: 'a'});
+morgan.token('body', (req, res) => {
+	return JSON.stringify(req.body);
+});
+app.use(morgan(format, { stream: accessLogStream }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -63,11 +72,6 @@ passport.deserializeUser(async (id, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use((req, res, next) => {
-	logRequest(req);
-	next();
-});
-
 function authuser(username, password, done) {
 	log(`login: ${username}, ${password}`);
 	const querry = `SELECT * FROM users WHERE username = '${username}'`;
@@ -88,24 +92,11 @@ function log(txt) {
 	fs.appendFileSync('log.txt', txt + '\n');
 }
 
-function logRequest(req) {
-	const time = new Date(Date.now());
-	const logobj = {
-		url: req.originalUrl,
-		user: req.user,
-		//method: JSON.stringify(req.methods),
-		time: time.toUTCString(),
-		body: req.body,
-		params: req.params,
-		ip: getClientIp(req)
-	};
-	fs.appendFileSync('requestslog.txt', JSON.stringify(logobj) + '\n');
-}
-
 function flashError(req, res, err, dest) {
 	log('error: ' + err);
 	req.flash('error', err);
-	res.redirect(dest);
+	if (dest) res.redirect(dest);
+	else res.sendStatus(204);
 }
 
 var getClientIp = function(req) {
@@ -168,23 +159,50 @@ app.get('/register', (req, res) => {
 
 app.post('/api/register', (req, res) => {
 	try {
-		console.log('register request ' + JSON.stringify(req.body));
-		let querry = `SELECT * FROM users WHERE username = '${req.body.username}'`;
-		con.query(querry, (e, r) => {
-			if (e) throw e;
-			if (r.length > 0) return flashError(req, res, 'Username indisponibil', '/register');
-			const hashpass = bcrypt.hashSync(req.body.password, 10);
-			querry = `INSERT INTO users (username, password) VALUES ('${req.body.username}', '${hashpass}')`;
-			con.query(querry, (err, result) => {
-				if (err) throw e;
-				querry = `CREATE TABLE ${req.body.username} (name VARCHAR(255), date VARCHAR(255), text TEXT)`;
-				con.query(querry, (error, r) => {
-					if (error) throw err;
-					log('created table ' + req.body.username);
-					log('registered user ' + req.body.username);
-					res.redirect('/');
-				});
-			});
+		const schema = joi.object().keys({
+			username: joi.string().required(),
+			password: joi.string().required(),
+			token: joi.string().required()
+		});
+		const joi_res = joi.validate(req.body, schema);
+		if (joi_res.error != null) {
+			return res.status(400).send(joi_res.error);
+		}
+		log('register request ' + req.body.username + ' ' + req.body.password);
+		const vurl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_KEY}&response=${req
+			.body.token}`;
+		request(vurl, (err, resp, body) => {
+			if (err) throw err;
+			body = JSON.parse(body);
+			console.log('captcha score: ' + body.score);
+			if (body.success) {
+				if (body.score >= 0.8) {
+					let querry = `SELECT * FROM users WHERE username = '${req.body.username}'`;
+					con.query(querry, (e, r) => {
+						if (e) throw e;
+						if (r.length > 0) return flashError(req, res, 'Username indisponibil');
+						const hashpass = bcrypt.hashSync(req.body.password, 10);
+						querry = `INSERT INTO users (username, password) VALUES ('${req.body
+							.username}', '${hashpass}')`;
+						con.query(querry, (err, result) => {
+							if (err) throw e;
+							querry = `CREATE TABLE ${req.body
+								.username} (name VARCHAR(255), date VARCHAR(255), text TEXT)`;
+							con.query(querry, (error, r) => {
+								if (error) throw err;
+								log('created table ' + req.body.username);
+								log('registered user ' + req.body.username);
+								res.redirect('/');
+							});
+						});
+					});
+				} else {
+					log('Found a bot: ' + getClientIp(req));
+					res.sendStatus(403);
+				}
+			} else {
+				res.sendStatus(401);
+			}
 		});
 	} catch (error) {
 		log(error);
@@ -261,7 +279,9 @@ app.post('/notes/:name', (req, res) => {
 		con.query(querry, (err, result) => {
 			if (err) throw err;
 			if (result.length == 0) return res.sendStatus(404);
-			querry = `UPDATE ${username} SET text = '${req.body.text}', date = '${moment().format('lll')}' WHERE name = '${name}'`;
+			querry = `UPDATE ${username} SET text = '${req.body.text}', date = '${moment().format(
+				'lll'
+			)}' WHERE name = '${name}'`;
 			con.query(querry, (e, r) => {
 				if (e) throw e;
 				req.flash('success', 'Salvat cu succes');
