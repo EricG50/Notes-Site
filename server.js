@@ -12,6 +12,8 @@ const moment = require('moment');
 const joi = require('joi');
 const morgan = require('morgan');
 
+"use strict";
+
 require('dotenv').config();
 
 const app = express();
